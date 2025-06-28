@@ -1,0 +1,4 @@
+obsws-python
+opencv-python
+mediapipe 
+obswebsocket 
