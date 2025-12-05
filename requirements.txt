@@ -1,4 +1,5 @@
+mediapipe
+obs-websocket-py
 obsws-python
 opencv-python
-mediapipe 
-obswebsocket 
+python-dotenv

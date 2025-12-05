@@ -1,25 +1,31 @@
 import logging
 import subprocess
 
+from dotenv import dotenv_values
+
 import cv2
 import mediapipe as mp
 from obsws_python import ReqClient
 
 logging.basicConfig(level=logging.INFO)
 
+# Load .env vars.
+config = dotenv_values(".env")
 
 # Constants for camera scenes
-CAM_CENTER = "CENTER CAMERA"
-CAM_RIGHT = "RIGHT CAMERA"
+CAM1 = config['CAM1']
+CAM2 = config['CAM2']
 
 # OBS connection settings
-OBS_HOST = "localhost"
-OBS_PORT = 4455
-OBS_PASSWORD = "test1234"
+OBS_HOST = config['OBS_HOST']
+OBS_PORT = config['OBS_PORT']
+OBS_PASSWORD = config['OBS_PASSWORD']
+
+# DELAY
+CHANGE_DELAY = config['CHANGE_DELAY']
 
 # Camera settings - change this index if needed (0, 1, or 2)
-PRIMARY_CAMERA_INDEX = 1  # Usually index 1 is the primary/built-in camera on macOS
-
+PRIMARY_CAMERA_INDEX = config['PRIMARY_CAMERA_INDEX']  # Usually index 1 is the primary/built-in camera on macOS
 
 def get_system_cameras():
     """Get list of system cameras using system_profiler"""
@@ -97,6 +103,7 @@ def main():
     last_camera = None
 
     try:
+        delay = 0
         while True:
             ret, frame = cap.read()
             if not ret:
@@ -112,14 +119,34 @@ def main():
 
                 logging.info(f"Nose X position: {nose_x:.3f}")
                 try:
-                    if nose_x >= 0.475 and last_camera != CAM_CENTER:
-                        logging.info(f"Switching to {CAM_CENTER}")
-                        client.set_current_program_scene(CAM_CENTER)
-                        last_camera = CAM_CENTER
-                    elif nose_x < 0.475 and last_camera != CAM_RIGHT:
-                        logging.info(f"Switching to {CAM_RIGHT}")
-                        client.set_current_program_scene(CAM_RIGHT)
-                        last_camera = CAM_RIGHT
+                    
+                    if nose_x >= 0.435 and last_camera != CAM1:
+                        delay = delay + 1
+                        if delay > CHANGE_DELAY:
+                            logging.info(f"Switching to {CAM1}")
+                            client.set_current_program_scene(CAM1)
+                            last_camera = CAM1
+                            delay = 0
+                        else:
+                            logging.info(f"Switching in {CHANGE_DELAY - delay}")
+                    elif nose_x < 0.395 and last_camera != CAM2:
+                        delay = delay + 1
+                        if delay > CHANGE_DELAY:
+                            logging.info(f"Switching to {CAM2}")
+                            client.set_current_program_scene(CAM2)
+                            last_camera = CAM2
+                            delay = 0
+                        else:
+                            logging.info(f"Switching in {CHANGE_DELAY - delay}")
+                    
+                    if nose_x >= 0.435 and last_camera == CAM1 and delay > 0: 
+                        logging.info("Reset delay counter")
+                        delay = 0
+
+                    elif nose_x < 0.395 and last_camera == CAM2 and delay > 0:
+                        logging.info("Reset delay counter")
+                        delay = 0
+
                 except Exception as e:
                     logging.error(f"Error switching scene: {e}")
             else:
